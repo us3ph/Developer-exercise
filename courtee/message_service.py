@@ -4,6 +4,8 @@ import json
 import sqlite3
 from typing import Any
 
+from courtee.analysis_service import AnalysisService, dossier_analysis_view, message_analysis_view
+from courtee.analyzers import Analyzer, FakeAnalyzer
 from courtee.db import Database
 from courtee.domain import Dossier, KnownMessage, LookupFacts, NormalizedMessage
 from courtee.routing import route
@@ -25,24 +27,26 @@ class IngestionResult:
     duplicate: bool
 
 
-def _saved_message(row: sqlite3.Row) -> dict[str, Any]:
+def _saved_message(row: sqlite3.Row, connection: sqlite3.Connection) -> dict[str, Any]:
     message = dict(row)
     for field in ("recipients", "headers", "attachments", "candidates"):
         message[field] = json.loads(message.pop(f"{field}_json"))
     # Keep the provider payload in the database without repeating it in every read.
     message.pop("payload_json")
+    message.update(message_analysis_view(connection, message["id"]))
     return message
 
 
 class MessageService:
-    def __init__(self, database: Database):
+    def __init__(self, database: Database, analyzer: Analyzer | None = None):
         self.database = database
+        self.analysis = AnalysisService(database, analyzer if analyzer is not None else FakeAnalyzer())
 
     def _existing(self, connection: sqlite3.Connection, channel: str, external_id: str) -> dict | None:
         row = connection.execute(
             MESSAGE_SELECT + " WHERE m.channel = ? AND m.external_id = ?", (channel, external_id),
         ).fetchone()
-        return _saved_message(row) if row is not None else None
+        return _saved_message(row, connection) if row is not None else None
 
     def _lookup_facts(self, connection: sqlite3.Connection, message: NormalizedMessage) -> LookupFacts:
         person = connection.execute(
@@ -97,12 +101,17 @@ class MessageService:
                     raise RuntimeError("Message insert returned no saved row")
                 return IngestionResult(existing, duplicate=True)
 
+            context = self.analysis.prepare(connection, inserted["id"], decision.dossier_id, message)
             saved = _saved_message(connection.execute(
                 MESSAGE_SELECT + " WHERE m.id = ?", (inserted["id"],),
-            ).fetchone())
+            ).fetchone(), connection)
 
         # Only a successful, committed new insert may produce side effects.
         log_dossier_choice(message, decision)
+        if context is not None:
+            self.analysis.process(context)
+            with self.database.connect() as connection:
+                saved = self._existing(connection, message.channel, message.external_id)
         return IngestionResult(saved, duplicate=False)
 
     def dossier_thread(self, reference: str) -> dict[str, Any]:
@@ -111,16 +120,16 @@ class MessageService:
             dossier = connection.execute("SELECT * FROM dossier WHERE reference = ?", (reference,)).fetchone()
             if dossier is None:
                 raise DossierNotFound(reference)
-            messages = [_saved_message(row) for row in connection.execute(
+            messages = [_saved_message(row, connection) for row in connection.execute(
                 MESSAGE_SELECT + " WHERE m.dossier_id = ? ORDER BY m.date DESC, m.id DESC", (dossier["id"],),
             )]
             details = dict(dossier)
             details["active"] = bool(details["active"])
-            return {"dossier": details, "messages": messages}
+            return {"dossier": details, "messages": messages, **dossier_analysis_view(connection, dossier["id"])}
 
     def triage(self) -> dict[str, Any]:
         with self.database.connect() as connection:
-            messages = [_saved_message(row) for row in connection.execute(
+            messages = [_saved_message(row, connection) for row in connection.execute(
                 MESSAGE_SELECT + " WHERE m.dossier_id IS NULL ORDER BY m.date DESC, m.id DESC",
             )]
             return {"messages": messages}

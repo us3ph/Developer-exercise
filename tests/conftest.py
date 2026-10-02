@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from courtee.api import create_app
+from courtee.analyzers import FakeAnalyzer
 from courtee.db import Database
 
 
@@ -25,5 +26,5 @@ def load_fixture():
 
 @pytest.fixture
 def client(database):
-    with TestClient(create_app(database)) as test_client:
+    with TestClient(create_app(database, analyzer=FakeAnalyzer())) as test_client:
         yield test_client
