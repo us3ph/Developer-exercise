@@ -1,0 +1,13 @@
+Exercice_dev_Courtee.txt
+steps.md
+PLAN.md
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+data/
+*.sqlite3
+*.sqlite3-*
+.env
+build/
+dist/

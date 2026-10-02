@@ -1,0 +1,1 @@
+"""Courtee exercise backend."""
