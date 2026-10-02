@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
+from courtee.api import create_app
 from courtee.db import Database
 
 
@@ -19,3 +21,9 @@ def load_fixture():
     def load(case):
         return json.loads((Path(__file__).parents[1] / "fixtures" / f"{case}.json").read_text())
     return load
+
+
+@pytest.fixture
+def client(database):
+    with TestClient(create_app(database)) as test_client:
+        yield test_client
