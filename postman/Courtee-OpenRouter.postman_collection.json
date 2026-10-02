@@ -1,0 +1,230 @@
+{
+  "info": {
+    "_postman_id": "24f5199f-5a40-4da0-a2be-21576d3ec892",
+    "name": "Courtee OpenRouter",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Start the seeded backend with COURTEE_ANALYZER=llm and OPENROUTER_API_KEY in .env. Run in order. The server selects the analyzer; check its OpenRouter request log to confirm the provider. A failed live analysis stops the run."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "reviewer",
+      "value": "interviewer-1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Live analysis",
+      "item": [
+        {
+          "name": "Baseline D-2041",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2041/messages"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"live_run_id\",pm.variables.replaceIn(\"{{$guid}}\"));pm.collectionVariables.unset(\"live_proposal_id\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Dossier exists\", () => { pm.expect(data.dossier.reference).to.eql(\"D-2041\"); });",
+                  "pm.collectionVariables.set(\"live_baseline\", JSON.stringify({count:data.messages.length,status:data.dossier.status,history:data.history.length,documents:data.document_requests.length,ids:data.messages.map(m=>m.id)}));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Analyze with OpenRouter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"d-2041@dossiers.courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"[D-2041] Accord de principe\",\n  \"text\": \"Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{live_run_id}}-LIVE@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"Live analysis completed\", () => { pm.expect(m.analysis.status,m.analysis.error || \"Live analysis did not complete\").to.eql(\"completed\"); });",
+                  "if(m.analysis.status!==\"completed\"){pm.execution.setNextRequest(null);}else{",
+                  "pm.test(\"Amount, duration, rate and reply extracted\", () => { pm.expect(m.analysis.result.entities.montant).to.eql(850000);pm.expect(m.analysis.result.entities.duree_ans).to.eql(25);pm.expect(m.analysis.result.entities.taux).to.eql(4.6);pm.expect(m.analysis.result.reply_draft).to.be.a(\"string\").and.not.empty; });",
+                  "const p=m.proposals.find(p=>p.action.type===\"set_status\" && p.action.value===\"accord_principe\");",
+                  "pm.test(\"Agreement needs human approval\", () => { pm.expect(p).to.be.an(\"object\");pm.expect(p.status).to.eql(\"pending\");pm.expect(p.action.risk).to.eql(\"medium\"); });",
+                  "if(p){pm.collectionVariables.set(\"live_proposal_id\",p.id);pm.collectionVariables.set(\"live_message_id\",m.id);pm.collectionVariables.set(\"live_analysis\",JSON.stringify(m.analysis));}else{pm.execution.setNextRequest(null);}",
+                  "}",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Before approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2041/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Dossier waits for approval\", () => { pm.expect(data.dossier.status).to.eql(JSON.parse(pm.collectionVariables.get(\"live_baseline\")).status);pm.expect(data.messages.find(m=>m.id===Number(pm.collectionVariables.get(\"live_message_id\"))).proposals.find(p=>p.id===Number(pm.collectionVariables.get(\"live_proposal_id\"))).status).to.eql(\"pending\"); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Approve live proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proposals/{{live_proposal_id}}/validate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer\": \"{{reviewer}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Human approval recorded\", () => { pm.expect(data.proposal.status).to.eql(\"applied\");pm.expect(data.history.applied_by).to.eql(pm.variables.get(\"reviewer\"));pm.expect(data.history.message_id).to.eql(Number(pm.collectionVariables.get(\"live_message_id\")));pm.expect(data.history.changes.status.after).to.eql(\"accord_principe\"); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Replay live message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"d-2041@dossiers.courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"[D-2041] Accord de principe\",\n  \"text\": \"Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{live_run_id}}-LIVE@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Replay reuses saved analysis\", () => { pm.expect(data.duplicate).to.eql(true);pm.expect(data.message.analysis).to.deep.eql(JSON.parse(pm.collectionVariables.get(\"live_analysis\")));pm.expect(data.message.proposals.find(p=>p.id===Number(pm.collectionVariables.get(\"live_proposal_id\"))).status).to.eql(\"applied\"); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "After approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2041/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Dossier status and source history saved\", () => { const base=JSON.parse(pm.collectionVariables.get(\"live_baseline\"));pm.expect(data.dossier.status).to.eql(\"accord_principe\");pm.expect(data.messages.length).to.eql(base.count+1);const history=data.history.filter(h=>h.proposal_id===Number(pm.collectionVariables.get(\"live_proposal_id\")));pm.expect(history).to.have.lengthOf(1);pm.expect(history[0].message_id).to.eql(Number(pm.collectionVariables.get(\"live_message_id\"))); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

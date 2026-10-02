@@ -1,0 +1,32 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/whatsapp"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "from": "+33612345678",
+      "id": "wamid.POSTMAN-{{run_id}}-F",
+      "timestamp": "1759395900",
+      "type": "text",
+      "text": {
+        "body": "Bonjour, je cherche mon dossier"
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("New message", () => { pm.expect(data.duplicate).to.eql(false); });
+      pm.test("Correct dossier, method, and state", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([null, "triage", "triage"]); });
+      pm.test("Unattached message is not analyzed", () => { pm.expect(m.dossier_id).to.eql(null);pm.expect(m.analysis).to.eql(null); });
+      pm.test("International phone preserved", () => { pm.expect(m.sender).to.eql("+33612345678"); });
+      pm.collectionVariables.set("id_F",m.id);pm.collectionVariables.set("saved_F",JSON.stringify(m));
+      })();
+    language: text/javascript
+order: 6000

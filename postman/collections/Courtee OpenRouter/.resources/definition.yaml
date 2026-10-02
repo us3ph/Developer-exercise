@@ -1,0 +1,5 @@
+$kind: collection
+description: Start the seeded backend with COURTEE_ANALYZER=llm and OPENROUTER_API_KEY in .env. Run in order. The server selects the analyzer; check its OpenRouter request log to confirm the provider. A failed live analysis stops the run.
+variables:
+  base_url: http://127.0.0.1:8000
+  reviewer: interviewer-1

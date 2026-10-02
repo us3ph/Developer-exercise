@@ -1,0 +1,32 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/whatsapp"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "from": "212662000111",
+      "id": "wamid.POSTMAN-{{run_id}}-C",
+      "timestamp": "1759395720",
+      "type": "text",
+      "text": {
+        "body": "Avez-vous des nouvelles ?"
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("New message", () => { pm.expect(data.duplicate).to.eql(false); });
+      pm.test("Correct dossier, method, and state", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([null, "needs_choice", "needs_choice"]); });
+      pm.test("Unattached message is not analyzed", () => { pm.expect(m.dossier_id).to.eql(null);pm.expect(m.analysis).to.eql(null); });
+      pm.test("Sara can choose her two dossiers", () => { pm.expect(m.candidates).to.deep.eql(["D-2041","D-2077"]); });
+      pm.collectionVariables.set("id_C",m.id);pm.collectionVariables.set("saved_C",JSON.stringify(m));
+      })();
+    language: text/javascript
+order: 3000

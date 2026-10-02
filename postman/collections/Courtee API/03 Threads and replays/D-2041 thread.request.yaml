@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{base_url}}/dossiers/D-2041/messages"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      const baseline=JSON.parse(pm.collectionVariables.get("base_D2041"));
+      pm.test("Message count: no duplicates", () => { pm.expect(data.messages.length).to.eql(baseline.count+2); });
+      pm.test("Saved messages belong to this dossier", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get("id_B")),Number(pm.collectionVariables.get("id_I"))]).sort((a,b)=>a-b)); });
+      pm.test("Newest messages first", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });
+      })();
+    language: text/javascript
+order: 4000

@@ -1,0 +1,34 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/whatsapp"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "from": "212661234567",
+      "id": "wamid.POSTMAN-{{run_id}}-ATTACHMENT",
+      "timestamp": "1759396200",
+      "type": "document",
+      "document": {
+        "id": "media-salary-fictional",
+        "filename": "attestation_salaire.pdf",
+        "mime_type": "application/pdf",
+        "caption": "Voici mon attestation pour D-1234"
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("Analysis completed", () => { pm.expect(m.analysis.status).to.eql("completed");pm.expect(data.duplicate).to.eql(false); });
+      pm.test("Low-risk action applied automatically", () => { pm.expect(m.analysis.result.actions[0].type).to.eql("classify_attachment");pm.expect(m.analysis.result.actions[0].risk).to.eql("low");pm.expect(m.proposals).to.deep.eql([]); });
+      pm.test("Salary certificate classified", () => { pm.expect(m.attachment_classifications).to.have.lengthOf(1);pm.expect(m.attachment_classifications[0].classification).to.eql("attestation_salaire"); });
+      pm.collectionVariables.set("id_ATTACHMENT",m.id);
+      })();
+    language: text/javascript
+order: 1000

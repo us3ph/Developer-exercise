@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/proposals/{{reject_id}}/reject"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "reviewer": "{{reviewer}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      pm.test("Rejected without applying action", () => { pm.expect(data.proposal.status).to.eql("rejected");pm.expect(data.proposal.reviewed_by).to.eql(pm.variables.get("reviewer"));pm.expect(data.history).to.eql(null); });
+      })();
+    language: text/javascript
+order: 9000

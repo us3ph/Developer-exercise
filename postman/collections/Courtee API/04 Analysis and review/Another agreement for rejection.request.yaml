@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "to": [
+        "d-2041@dossiers.courtee.ai"
+      ],
+      "from": "k.bennani@cihbank.ma",
+      "subject": "[D-2041] Accord de principe",
+      "text": "Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.",
+      "headers": {
+        "Message-ID": "<POSTMAN-{{run_id}}-REJECT@demo.test>"
+      },
+      "attachments": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      pm.test("Status action awaits review", () => { const p=data.message.proposals.find(p=>p.action.type==="set_status");pm.expect(p.status).to.eql("pending");pm.collectionVariables.set("reject_id",p.id);pm.collectionVariables.set("id_REJECT",data.message.id); });
+      })();
+    language: text/javascript
+order: 8000

@@ -1,0 +1,34 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "to": [
+        "contact@courtee.ai"
+      ],
+      "from": "k.bennani@cihbank.ma",
+      "subject": "[D-2041] relance",
+      "text": "Merci pour votre retour.",
+      "headers": {
+        "Message-ID": "<POSTMAN-{{run_id}}-I@demo.test>"
+      },
+      "attachments": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("New message", () => { pm.expect(data.duplicate).to.eql(false); });
+      pm.test("Correct dossier, method, and state", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql(["D-2041", "subject_reference", "attached"]); });
+      pm.test("Fake analysis completed", () => { pm.expect(m.analysis.status).to.eql("completed");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });
+      pm.collectionVariables.set("id_I",m.id);pm.collectionVariables.set("saved_I",JSON.stringify(m));
+      })();
+    language: text/javascript
+order: 9000

@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/dossiers/D-1234/messages"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      const baseline=JSON.parse(pm.collectionVariables.get("base_D1234"));
+      pm.test("Message count: no duplicates", () => { pm.expect(data.messages.length).to.eql(baseline.count+10); });
+      pm.test("Saved messages belong to this dossier", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get("id_A")),Number(pm.collectionVariables.get("id_G")),Number(pm.collectionVariables.get("id_H")),Number(pm.collectionVariables.get("id_K")),Number(pm.collectionVariables.get("id_L")),Number(pm.collectionVariables.get("id_PHONE")),Number(pm.collectionVariables.get("id_REFERENCES")),Number(pm.collectionVariables.get("id_ATTACHMENT")),Number(pm.collectionVariables.get("id_DOCUMENT")),Number(pm.collectionVariables.get("id_AGREEMENT"))]).sort((a,b)=>a-b)); });
+      pm.test("Newest messages first", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });
+      pm.test("Status and history updated once", () => { pm.expect(data.dossier.status).to.eql("accord_principe");pm.expect(data.history.length).to.eql(baseline.history+3);pm.expect(data.document_requests.length).to.eql(baseline.documents+1); });
+      })();
+    language: text/javascript
+order: 7000

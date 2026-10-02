@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/dossiers/D-2041/messages"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      const baseline=JSON.parse(pm.collectionVariables.get("base_D2041"));
+      pm.test("Message count: no duplicates", () => { pm.expect(data.messages.length).to.eql(baseline.count+3); });
+      pm.test("Saved messages belong to this dossier", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get("id_B")),Number(pm.collectionVariables.get("id_I")),Number(pm.collectionVariables.get("id_REJECT"))]).sort((a,b)=>a-b)); });
+      pm.test("Newest messages first", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });
+      pm.test("Rejection leaves dossier and history unchanged", () => { pm.expect(data.dossier.status).to.eql(baseline.status);pm.expect(data.history.length).to.eql(baseline.history);pm.expect(data.messages.find(m=>m.id===Number(pm.collectionVariables.get("id_REJECT"))).proposals[0].status).to.eql("rejected"); });
+      })();
+    language: text/javascript
+order: 10000

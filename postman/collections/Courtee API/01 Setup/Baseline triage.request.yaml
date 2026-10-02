@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/triage"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      pm.collectionVariables.set("base_triage",JSON.stringify(data.messages.map(m=>m.id)));
+      })();
+    language: text/javascript
+order: 4000

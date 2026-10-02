@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/proposals/{{approve_id}}/validate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: "{}"
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 422", () => { pm.response.to.have.status(422); });
+      const data = pm.response.json();
+      })();
+    language: text/javascript
+order: 2000

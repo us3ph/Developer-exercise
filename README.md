@@ -100,6 +100,8 @@ Both review endpoints require a JSON body such as `{"reviewer":"tutor-1"}`. Prop
 
 Follow [the 20-minute demo guide](docs/demo.md) to start with a fresh seeded database, replay A–L, show threads and triage, demonstrate duplicate prevention, classify an attachment, and approve an agreement proposal. It includes the commands and expected results.
 
+For an interview using Postman, follow [the Postman guide](docs/postman.md). The importable collections include ordered requests and automatic response checks, plus a separate live OpenRouter demo.
+
 The implementation separates payload normalization, pure routing, persistence, and analysis. Contacts belong to people, and dossier membership goes through participants. A phone number can therefore identify multiple dossiers and a dossier can have multiple participants. WhatsApp routing preserves the foreign-reference guard; email routing checks recipient address, outgoing thread, then subject reference. See [implementation decisions](docs/decisions.md).
 
 Migrations are in `courtee/migrations/`; seed setup is in `courtee/db.py`; routing fixtures are in `fixtures/`; analysis fixtures are in `fixtures/analysis/`; automated checks are in `tests/`. WhatsApp/email delivery and attachment contents are simulated; dossier choices are logged as an interactive message. The reviewer identifier is supplied by the exercise client.

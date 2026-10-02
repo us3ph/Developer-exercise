@@ -1,0 +1,34 @@
+$kind: http-request
+name: "Agreement: pending proposal"
+url: "{{base_url}}/webhooks/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "to": [
+        "d-1234@dossiers.courtee.ai"
+      ],
+      "from": "k.bennani@cihbank.ma",
+      "subject": "[D-1234] Accord de principe",
+      "text": "Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.",
+      "headers": {
+        "Message-ID": "<POSTMAN-{{run_id}}-AGREEMENT@demo.test>"
+      },
+      "attachments": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;const p=m.proposals.find(p=>p.action.type==="set_status");
+      pm.test("Agreement entities extracted", () => { pm.expect(m.analysis.status).to.eql("completed");pm.expect(m.analysis.result.entities.montant).to.eql(850000);pm.expect(m.analysis.result.entities.duree_ans).to.eql(25);pm.expect(m.analysis.result.entities.taux).to.eql(4.6);pm.expect(m.analysis.result.reply_draft).to.be.a("string").and.not.empty; });
+      pm.test("Medium-risk status stays pending", () => { pm.expect(p.status).to.eql("pending");pm.expect(p.action.risk).to.eql("medium");pm.expect(p.action.value).to.eql("accord_principe"); });
+      pm.collectionVariables.set("approve_id",p.id);pm.collectionVariables.set("id_AGREEMENT",m.id);pm.collectionVariables.set("agreement_analysis",JSON.stringify(m.analysis));
+      })();
+    language: text/javascript
+order: 3000

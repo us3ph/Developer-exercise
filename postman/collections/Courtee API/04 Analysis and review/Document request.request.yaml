@@ -1,0 +1,33 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "to": [
+        "d-1234@dossiers.courtee.ai"
+      ],
+      "from": "k.bennani@cihbank.ma",
+      "subject": "[D-1234] Pièce manquante",
+      "text": "Bonjour, merci de fournir une attestation de salaire.",
+      "headers": {
+        "Message-ID": "<POSTMAN-{{run_id}}-DOCUMENT@demo.test>"
+      },
+      "attachments": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("Analysis completed", () => { pm.expect(m.analysis.status).to.eql("completed");pm.expect(data.duplicate).to.eql(false); });
+      pm.test("Low-risk action applied automatically", () => { pm.expect(m.analysis.result.actions[0].type).to.eql("request_document");pm.expect(m.analysis.result.actions[0].risk).to.eql("low");pm.expect(m.proposals).to.deep.eql([]); });
+      pm.collectionVariables.set("id_DOCUMENT",m.id);
+      })();
+    language: text/javascript
+order: 2000

@@ -1,0 +1,34 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "to": [
+        "contact@courtee.ai"
+      ],
+      "from": "inconnu@example.test",
+      "subject": "Question générale",
+      "text": "Bonjour, pouvez-vous me rappeler ?",
+      "headers": {
+        "Message-ID": "<POSTMAN-{{run_id}}-J@demo.test>"
+      },
+      "attachments": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("New message", () => { pm.expect(data.duplicate).to.eql(false); });
+      pm.test("Correct dossier, method, and state", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([null, "triage", "triage"]); });
+      pm.test("Unattached message is not analyzed", () => { pm.expect(m.dossier_id).to.eql(null);pm.expect(m.analysis).to.eql(null); });
+      pm.collectionVariables.set("id_J",m.id);pm.collectionVariables.set("saved_J",JSON.stringify(m));
+      })();
+    language: text/javascript
+order: 10000

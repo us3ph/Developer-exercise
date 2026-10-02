@@ -1,0 +1,10 @@
+$kind: collection
+description: Start the seeded backend with COURTEE_ANALYZER=fake. Run every folder in order. Each run creates new message IDs and checks changes against existing data.
+variables:
+  base_url: http://127.0.0.1:8000
+  reviewer: interviewer-1
+  run_id: ""
+  base_D1234: ""
+  base_triage: ""
+  id_A: ""
+  saved_A: ""

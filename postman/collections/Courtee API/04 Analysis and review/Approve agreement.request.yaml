@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_url}}/proposals/{{approve_id}}/validate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "reviewer": "{{reviewer}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      pm.test("Proposal applied by reviewer", () => { pm.expect(data.proposal.status).to.eql("applied");pm.expect(data.proposal.reviewed_by).to.eql(pm.variables.get("reviewer")); });
+      pm.test("History links reviewer and source", () => { pm.expect(data.history.applied_by).to.eql(pm.variables.get("reviewer"));pm.expect(data.history.message_id).to.eql(Number(pm.collectionVariables.get("id_AGREEMENT")));pm.expect(data.history.proposal_id).to.eql(Number(pm.collectionVariables.get("approve_id")));pm.expect(data.history.changes.status).to.deep.eql({before:JSON.parse(pm.collectionVariables.get("base_D1234")).status,after:"accord_principe"}); });
+      })();
+    language: text/javascript
+order: 5000

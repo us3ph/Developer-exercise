@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/dossiers/D-2041/messages"
+method: GET
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set("live_run_id",pm.variables.replaceIn("{{$guid}}"));pm.collectionVariables.unset("live_proposal_id");
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      pm.test("Dossier exists", () => { pm.expect(data.dossier.reference).to.eql("D-2041"); });
+      pm.collectionVariables.set("live_baseline", JSON.stringify({count:data.messages.length,status:data.dossier.status,history:data.history.length,documents:data.document_requests.length,ids:data.messages.map(m=>m.id)}));
+      })();
+    language: text/javascript
+order: 1000

@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/whatsapp"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "from": "212661234567",
+      "id": "wamid.POSTMAN-{{run_id}}-K",
+      "timestamp": "1759395960",
+      "type": "text",
+      "text": {
+        "body": "Je renvoie mon message"
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("New message", () => { pm.expect(data.duplicate).to.eql(false); });
+      pm.test("Correct dossier, method, and state", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql(["D-1234", "single_dossier", "attached"]); });
+      pm.test("Fake analysis completed", () => { pm.expect(m.analysis.status).to.eql("completed");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });
+      pm.collectionVariables.set("id_K",m.id);pm.collectionVariables.set("saved_K",JSON.stringify(m));
+      })();
+    language: text/javascript
+order: 11000

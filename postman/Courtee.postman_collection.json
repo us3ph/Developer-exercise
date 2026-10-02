@@ -1,0 +1,1501 @@
+{
+  "info": {
+    "_postman_id": "fae008f2-42db-4aba-85ee-598588e201fe",
+    "name": "Courtee API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Start the seeded backend with COURTEE_ANALYZER=fake. Run every folder in order. Each run creates new message IDs and checks changes against existing data."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "reviewer",
+      "value": "interviewer-1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Setup",
+      "item": [
+        {
+          "name": "Baseline D-1234",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-1234/messages"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"run_id\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Dossier exists\", () => { pm.expect(data.dossier.reference).to.eql(\"D-1234\"); });",
+                  "pm.collectionVariables.set(\"base_D1234\", JSON.stringify({count:data.messages.length,status:data.dossier.status,history:data.history.length,documents:data.document_requests.length,ids:data.messages.map(m=>m.id)}));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Baseline D-2041",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2041/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Dossier exists\", () => { pm.expect(data.dossier.reference).to.eql(\"D-2041\"); });",
+                  "pm.collectionVariables.set(\"base_D2041\", JSON.stringify({count:data.messages.length,status:data.dossier.status,history:data.history.length,documents:data.document_requests.length,ids:data.messages.map(m=>m.id)}));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Baseline D-2077",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2077/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Dossier exists\", () => { pm.expect(data.dossier.reference).to.eql(\"D-2077\"); });",
+                  "pm.collectionVariables.set(\"base_D2077\", JSON.stringify({count:data.messages.length,status:data.dossier.status,history:data.history.length,documents:data.document_requests.length,ids:data.messages.map(m=>m.id)}));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Baseline triage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/triage"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set(\"base_triage\",JSON.stringify(data.messages.map(m=>m.id)));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Routing A–L",
+      "item": [
+        {
+          "name": "A — single_dossier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212661234567\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-A\",\n  \"timestamp\": \"1759395600\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Des nouvelles ?\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-1234\", \"single_dossier\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.test(\"Normalized Moroccan phone\", () => { pm.expect(m.sender).to.eql(\"+212661234567\"); });",
+                  "pm.collectionVariables.set(\"id_A\",m.id);pm.collectionVariables.set(\"saved_A\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "B — context",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212662000111\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-B\",\n  \"timestamp\": \"1759395660\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Oui je peux passer jeudi\"\n  },\n  \"context\": {\n    \"from\": \"212600000000\",\n    \"id\": \"wamid.OUT-2041\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-2041\", \"context\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.collectionVariables.set(\"id_B\",m.id);pm.collectionVariables.set(\"saved_B\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "C — needs_choice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212662000111\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-C\",\n  \"timestamp\": \"1759395720\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Avez-vous des nouvelles ?\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([null, \"needs_choice\", \"needs_choice\"]); });",
+                  "pm.test(\"Unattached message is not analyzed\", () => { pm.expect(m.dossier_id).to.eql(null);pm.expect(m.analysis).to.eql(null); });",
+                  "pm.test(\"Sara can choose her two dossiers\", () => { pm.expect(m.candidates).to.deep.eql([\"D-2041\",\"D-2077\"]); });",
+                  "pm.collectionVariables.set(\"id_C\",m.id);pm.collectionVariables.set(\"saved_C\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "D — reference",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212662000111\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-D\",\n  \"timestamp\": \"1759395780\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Je vous écris pour D-2077\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-2077\", \"reference\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.collectionVariables.set(\"id_D\",m.id);pm.collectionVariables.set(\"saved_D\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "E — triage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212661234567\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-E\",\n  \"timestamp\": \"1759395840\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Des nouvelles de D-2041 ?\"\n  },\n  \"context\": {\n    \"id\": \"wamid.UNKNOWN\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([null, \"triage\", \"triage\"]); });",
+                  "pm.test(\"Unattached message is not analyzed\", () => { pm.expect(m.dossier_id).to.eql(null);pm.expect(m.analysis).to.eql(null); });",
+                  "pm.collectionVariables.set(\"id_E\",m.id);pm.collectionVariables.set(\"saved_E\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "F — triage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"+33612345678\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-F\",\n  \"timestamp\": \"1759395900\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Bonjour, je cherche mon dossier\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([null, \"triage\", \"triage\"]); });",
+                  "pm.test(\"Unattached message is not analyzed\", () => { pm.expect(m.dossier_id).to.eql(null);pm.expect(m.analysis).to.eql(null); });",
+                  "pm.test(\"International phone preserved\", () => { pm.expect(m.sender).to.eql(\"+33612345678\"); });",
+                  "pm.collectionVariables.set(\"id_F\",m.id);pm.collectionVariables.set(\"saved_F\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "G — dossier_address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"d-1234@dossiers.courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"Suivi du financement\",\n  \"text\": \"Bonjour, avez-vous des nouvelles ?\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-G@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-1234\", \"dossier_address\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.collectionVariables.set(\"id_G\",m.id);pm.collectionVariables.set(\"saved_G\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "H — thread",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"contact@courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"RE: Suivi du financement\",\n  \"text\": \"Bonjour, dossier en cours d'étude.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-H@demo.test>\",\n    \"In-Reply-To\": \"<out-1234@dossiers.courtee.ai>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-1234\", \"thread\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.collectionVariables.set(\"id_H\",m.id);pm.collectionVariables.set(\"saved_H\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "I — subject_reference",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"contact@courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"[D-2041] relance\",\n  \"text\": \"Merci pour votre retour.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-I@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-2041\", \"subject_reference\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.collectionVariables.set(\"id_I\",m.id);pm.collectionVariables.set(\"saved_I\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "J — triage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"contact@courtee.ai\"\n  ],\n  \"from\": \"inconnu@example.test\",\n  \"subject\": \"Question générale\",\n  \"text\": \"Bonjour, pouvez-vous me rappeler ?\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-J@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([null, \"triage\", \"triage\"]); });",
+                  "pm.test(\"Unattached message is not analyzed\", () => { pm.expect(m.dossier_id).to.eql(null);pm.expect(m.analysis).to.eql(null); });",
+                  "pm.collectionVariables.set(\"id_J\",m.id);pm.collectionVariables.set(\"saved_J\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "K — single_dossier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212661234567\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-K\",\n  \"timestamp\": \"1759395960\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Je renvoie mon message\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-1234\", \"single_dossier\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.collectionVariables.set(\"id_K\",m.id);pm.collectionVariables.set(\"saved_K\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "L — single_dossier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"0661234567\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-L\",\n  \"timestamp\": \"1759396020\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Bonjour, des nouvelles du dossier ?\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-1234\", \"single_dossier\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.test(\"Normalized Moroccan phone\", () => { pm.expect(m.sender).to.eql(\"+212661234567\"); });",
+                  "pm.collectionVariables.set(\"id_L\",m.id);pm.collectionVariables.set(\"saved_L\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "PHONE — single_dossier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"+212 6 61 23 45 67\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-PHONE\",\n  \"timestamp\": \"1759395600\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Des nouvelles ?\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-1234\", \"single_dossier\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.test(\"Normalized Moroccan phone\", () => { pm.expect(m.sender).to.eql(\"+212661234567\"); });",
+                  "pm.collectionVariables.set(\"id_PHONE\",m.id);pm.collectionVariables.set(\"saved_PHONE\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "REFERENCES — thread",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"contact@courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"RE: Suivi du financement\",\n  \"text\": \"Bonjour, dossier en cours d'étude.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-REFERENCES@demo.test>\",\n    \"References\": \"<unknown@demo.test> <out-1234@dossiers.courtee.ai>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"New message\", () => { pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Correct dossier, method, and state\", () => { pm.expect([m.dossier_reference,m.routing_method,m.routing_state]).to.deep.eql([\"D-1234\", \"thread\", \"attached\"]); });",
+                  "pm.test(\"Fake analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.error).to.eql(null);pm.expect(m.analysis.result.confidence).to.eql(0.95); });",
+                  "pm.collectionVariables.set(\"id_REFERENCES\",m.id);pm.collectionVariables.set(\"saved_REFERENCES\",JSON.stringify(m));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Threads and replays",
+      "item": [
+        {
+          "name": "Replay K",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212661234567\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-K\",\n  \"timestamp\": \"1759395960\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Je renvoie mon message\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Replay returns the saved message\", () => { pm.expect(data.duplicate).to.eql(true);pm.expect(data.message).to.deep.eql(JSON.parse(pm.collectionVariables.get(\"saved_K\"))); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Replay C",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212662000111\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-C\",\n  \"timestamp\": \"1759395720\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Avez-vous des nouvelles ?\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Replay returns the saved message\", () => { pm.expect(data.duplicate).to.eql(true);pm.expect(data.message).to.deep.eql(JSON.parse(pm.collectionVariables.get(\"saved_C\"))); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "D-1234 thread",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-1234/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "const baseline=JSON.parse(pm.collectionVariables.get(\"base_D1234\"));",
+                  "pm.test(\"Message count: no duplicates\", () => { pm.expect(data.messages.length).to.eql(baseline.count+7); });",
+                  "pm.test(\"Saved messages belong to this dossier\", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get(\"id_A\")),Number(pm.collectionVariables.get(\"id_G\")),Number(pm.collectionVariables.get(\"id_H\")),Number(pm.collectionVariables.get(\"id_K\")),Number(pm.collectionVariables.get(\"id_L\")),Number(pm.collectionVariables.get(\"id_PHONE\")),Number(pm.collectionVariables.get(\"id_REFERENCES\"))]).sort((a,b)=>a-b)); });",
+                  "pm.test(\"Newest messages first\", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "D-2041 thread",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2041/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "const baseline=JSON.parse(pm.collectionVariables.get(\"base_D2041\"));",
+                  "pm.test(\"Message count: no duplicates\", () => { pm.expect(data.messages.length).to.eql(baseline.count+2); });",
+                  "pm.test(\"Saved messages belong to this dossier\", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get(\"id_B\")),Number(pm.collectionVariables.get(\"id_I\"))]).sort((a,b)=>a-b)); });",
+                  "pm.test(\"Newest messages first\", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "D-2077 thread",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2077/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "const baseline=JSON.parse(pm.collectionVariables.get(\"base_D2077\"));",
+                  "pm.test(\"Message count: no duplicates\", () => { pm.expect(data.messages.length).to.eql(baseline.count+1); });",
+                  "pm.test(\"Saved messages belong to this dossier\", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get(\"id_D\"))]).sort((a,b)=>a-b)); });",
+                  "pm.test(\"Newest messages first\", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Triage including Sara",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/triage"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Four new triage entries\", () => { const old=JSON.parse(pm.collectionVariables.get(\"base_triage\"));const added=[\"C\",\"E\",\"F\",\"J\"].map(c=>Number(pm.collectionVariables.get(\"id_\"+c)));pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(old.concat(added).sort((a,b)=>a-b)); });",
+                  "pm.test(\"Every entry is unattached\", () => { pm.expect(data.messages.every(m=>m.dossier_id===null)).to.eql(true); });",
+                  "pm.test(\"Newest messages first\", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Analysis and review",
+      "item": [
+        {
+          "name": "Attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"212661234567\",\n  \"id\": \"wamid.POSTMAN-{{run_id}}-ATTACHMENT\",\n  \"timestamp\": \"1759396200\",\n  \"type\": \"document\",\n  \"document\": {\n    \"id\": \"media-salary-fictional\",\n    \"filename\": \"attestation_salaire.pdf\",\n    \"mime_type\": \"application/pdf\",\n    \"caption\": \"Voici mon attestation pour D-1234\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"Analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Low-risk action applied automatically\", () => { pm.expect(m.analysis.result.actions[0].type).to.eql(\"classify_attachment\");pm.expect(m.analysis.result.actions[0].risk).to.eql(\"low\");pm.expect(m.proposals).to.deep.eql([]); });",
+                  "pm.test(\"Salary certificate classified\", () => { pm.expect(m.attachment_classifications).to.have.lengthOf(1);pm.expect(m.attachment_classifications[0].classification).to.eql(\"attestation_salaire\"); });",
+                  "pm.collectionVariables.set(\"id_ATTACHMENT\",m.id);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Document request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"d-1234@dossiers.courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"[D-1234] Pièce manquante\",\n  \"text\": \"Bonjour, merci de fournir une attestation de salaire.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-DOCUMENT@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;",
+                  "pm.test(\"Analysis completed\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(data.duplicate).to.eql(false); });",
+                  "pm.test(\"Low-risk action applied automatically\", () => { pm.expect(m.analysis.result.actions[0].type).to.eql(\"request_document\");pm.expect(m.analysis.result.actions[0].risk).to.eql(\"low\");pm.expect(m.proposals).to.deep.eql([]); });",
+                  "pm.collectionVariables.set(\"id_DOCUMENT\",m.id);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Agreement: pending proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"d-1234@dossiers.courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"[D-1234] Accord de principe\",\n  \"text\": \"Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-AGREEMENT@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "const m=data.message;const p=m.proposals.find(p=>p.action.type===\"set_status\");",
+                  "pm.test(\"Agreement entities extracted\", () => { pm.expect(m.analysis.status).to.eql(\"completed\");pm.expect(m.analysis.result.entities.montant).to.eql(850000);pm.expect(m.analysis.result.entities.duree_ans).to.eql(25);pm.expect(m.analysis.result.entities.taux).to.eql(4.6);pm.expect(m.analysis.result.reply_draft).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Medium-risk status stays pending\", () => { pm.expect(p.status).to.eql(\"pending\");pm.expect(p.action.risk).to.eql(\"medium\");pm.expect(p.action.value).to.eql(\"accord_principe\"); });",
+                  "pm.collectionVariables.set(\"approve_id\",p.id);pm.collectionVariables.set(\"id_AGREEMENT\",m.id);pm.collectionVariables.set(\"agreement_analysis\",JSON.stringify(m.analysis));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Before approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-1234/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "const baseline=JSON.parse(pm.collectionVariables.get(\"base_D1234\"));",
+                  "pm.test(\"Message count: no duplicates\", () => { pm.expect(data.messages.length).to.eql(baseline.count+10); });",
+                  "pm.test(\"Saved messages belong to this dossier\", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get(\"id_A\")),Number(pm.collectionVariables.get(\"id_G\")),Number(pm.collectionVariables.get(\"id_H\")),Number(pm.collectionVariables.get(\"id_K\")),Number(pm.collectionVariables.get(\"id_L\")),Number(pm.collectionVariables.get(\"id_PHONE\")),Number(pm.collectionVariables.get(\"id_REFERENCES\")),Number(pm.collectionVariables.get(\"id_ATTACHMENT\")),Number(pm.collectionVariables.get(\"id_DOCUMENT\")),Number(pm.collectionVariables.get(\"id_AGREEMENT\"))]).sort((a,b)=>a-b)); });",
+                  "pm.test(\"Newest messages first\", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });",
+                  "pm.test(\"Status unchanged before approval\", () => { pm.expect(data.dossier.status).to.eql(baseline.status); });",
+                  "pm.test(\"Automatic actions recorded in history\", () => { pm.expect(data.history.length).to.eql(baseline.history+2);for(const c of [\"ATTACHMENT\",\"DOCUMENT\"]){pm.expect(data.history.find(h=>h.message_id===Number(pm.collectionVariables.get(\"id_\"+c))).applied_by).to.eql(\"auto\");}pm.expect(data.document_requests.length).to.eql(baseline.documents+1); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Approve agreement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proposals/{{approve_id}}/validate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer\": \"{{reviewer}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Proposal applied by reviewer\", () => { pm.expect(data.proposal.status).to.eql(\"applied\");pm.expect(data.proposal.reviewed_by).to.eql(pm.variables.get(\"reviewer\")); });",
+                  "pm.test(\"History links reviewer and source\", () => { pm.expect(data.history.applied_by).to.eql(pm.variables.get(\"reviewer\"));pm.expect(data.history.message_id).to.eql(Number(pm.collectionVariables.get(\"id_AGREEMENT\")));pm.expect(data.history.proposal_id).to.eql(Number(pm.collectionVariables.get(\"approve_id\")));pm.expect(data.history.changes.status).to.deep.eql({before:JSON.parse(pm.collectionVariables.get(\"base_D1234\")).status,after:\"accord_principe\"}); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Replay approved agreement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"d-1234@dossiers.courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"[D-1234] Accord de principe\",\n  \"text\": \"Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-AGREEMENT@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Replay preserves applied proposal and analysis\", () => { pm.expect(data.duplicate).to.eql(true);pm.expect(data.message.id).to.eql(Number(pm.collectionVariables.get(\"id_AGREEMENT\")));pm.expect(data.message.analysis).to.deep.eql(JSON.parse(pm.collectionVariables.get(\"agreement_analysis\")));pm.expect(data.message.proposals.find(p=>p.id===Number(pm.collectionVariables.get(\"approve_id\"))).status).to.eql(\"applied\"); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "After approval and replay",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-1234/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "const baseline=JSON.parse(pm.collectionVariables.get(\"base_D1234\"));",
+                  "pm.test(\"Message count: no duplicates\", () => { pm.expect(data.messages.length).to.eql(baseline.count+10); });",
+                  "pm.test(\"Saved messages belong to this dossier\", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get(\"id_A\")),Number(pm.collectionVariables.get(\"id_G\")),Number(pm.collectionVariables.get(\"id_H\")),Number(pm.collectionVariables.get(\"id_K\")),Number(pm.collectionVariables.get(\"id_L\")),Number(pm.collectionVariables.get(\"id_PHONE\")),Number(pm.collectionVariables.get(\"id_REFERENCES\")),Number(pm.collectionVariables.get(\"id_ATTACHMENT\")),Number(pm.collectionVariables.get(\"id_DOCUMENT\")),Number(pm.collectionVariables.get(\"id_AGREEMENT\"))]).sort((a,b)=>a-b)); });",
+                  "pm.test(\"Newest messages first\", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });",
+                  "pm.test(\"Status and history updated once\", () => { pm.expect(data.dossier.status).to.eql(\"accord_principe\");pm.expect(data.history.length).to.eql(baseline.history+3);pm.expect(data.document_requests.length).to.eql(baseline.documents+1); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Another agreement for rejection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": [\n    \"d-2041@dossiers.courtee.ai\"\n  ],\n  \"from\": \"k.bennani@cihbank.ma\",\n  \"subject\": \"[D-2041] Accord de principe\",\n  \"text\": \"Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.\",\n  \"headers\": {\n    \"Message-ID\": \"<POSTMAN-{{run_id}}-REJECT@demo.test>\"\n  },\n  \"attachments\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 201\", () => { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Status action awaits review\", () => { const p=data.message.proposals.find(p=>p.action.type===\"set_status\");pm.expect(p.status).to.eql(\"pending\");pm.collectionVariables.set(\"reject_id\",p.id);pm.collectionVariables.set(\"id_REJECT\",data.message.id); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject agreement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proposals/{{reject_id}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer\": \"{{reviewer}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Rejected without applying action\", () => { pm.expect(data.proposal.status).to.eql(\"rejected\");pm.expect(data.proposal.reviewed_by).to.eql(pm.variables.get(\"reviewer\"));pm.expect(data.history).to.eql(null); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "After rejection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/D-2041/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "const baseline=JSON.parse(pm.collectionVariables.get(\"base_D2041\"));",
+                  "pm.test(\"Message count: no duplicates\", () => { pm.expect(data.messages.length).to.eql(baseline.count+3); });",
+                  "pm.test(\"Saved messages belong to this dossier\", () => { pm.expect(data.messages.map(m=>m.id).sort((a,b)=>a-b)).to.deep.eql(baseline.ids.concat([Number(pm.collectionVariables.get(\"id_B\")),Number(pm.collectionVariables.get(\"id_I\")),Number(pm.collectionVariables.get(\"id_REJECT\"))]).sort((a,b)=>a-b)); });",
+                  "pm.test(\"Newest messages first\", () => { for(let i=1;i<data.messages.length;i++){const a=data.messages[i-1],b=data.messages[i];pm.expect(a.date>b.date || (a.date===b.date && a.id>b.id)).to.eql(true);} });",
+                  "pm.test(\"Rejection leaves dossier and history unchanged\", () => { pm.expect(data.dossier.status).to.eql(baseline.status);pm.expect(data.history.length).to.eql(baseline.history);pm.expect(data.messages.find(m=>m.id===Number(pm.collectionVariables.get(\"id_REJECT\"))).proposals[0].status).to.eql(\"rejected\"); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 Errors",
+      "item": [
+        {
+          "name": "Invalid webhook input",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/webhooks/whatsapp",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 422\", () => { pm.response.to.have.status(422); });",
+                  "const data = pm.response.json();",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Missing reviewer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proposals/{{approve_id}}/validate",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 422\", () => { pm.response.to.have.status(422); });",
+                  "const data = pm.response.json();",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Already approved proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proposals/{{approve_id}}/validate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer\": \"{{reviewer}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 409\", () => { pm.response.to.have.status(409); });",
+                  "const data = pm.response.json();",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Already rejected proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proposals/{{reject_id}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer\": \"{{reviewer}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 409\", () => { pm.response.to.have.status(409); });",
+                  "const data = pm.response.json();",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Unknown dossier",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/dossiers/unknown-{{run_id}}/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 404\", () => { pm.response.to.have.status(404); });",
+                  "const data = pm.response.json();",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Unknown proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proposals/0/validate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer\": \"{{reviewer}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 404\", () => { pm.response.to.have.status(404); });",
+                  "const data = pm.response.json();",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "to": [
+        "d-1234@dossiers.courtee.ai"
+      ],
+      "from": "k.bennani@cihbank.ma",
+      "subject": "[D-1234] Accord de principe",
+      "text": "Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.",
+      "headers": {
+        "Message-ID": "<POSTMAN-{{run_id}}-AGREEMENT@demo.test>"
+      },
+      "attachments": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 200", () => { pm.response.to.have.status(200); });
+      const data = pm.response.json();
+      pm.test("Replay preserves applied proposal and analysis", () => { pm.expect(data.duplicate).to.eql(true);pm.expect(data.message.id).to.eql(Number(pm.collectionVariables.get("id_AGREEMENT")));pm.expect(data.message.analysis).to.deep.eql(JSON.parse(pm.collectionVariables.get("agreement_analysis")));pm.expect(data.message.proposals.find(p=>p.id===Number(pm.collectionVariables.get("approve_id"))).status).to.eql("applied"); });
+      })();
+    language: text/javascript
+order: 6000

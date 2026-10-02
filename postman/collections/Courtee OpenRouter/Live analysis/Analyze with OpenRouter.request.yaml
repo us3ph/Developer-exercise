@@ -1,0 +1,37 @@
+$kind: http-request
+url: "{{base_url}}/webhooks/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "to": [
+        "d-2041@dossiers.courtee.ai"
+      ],
+      "from": "k.bennani@cihbank.ma",
+      "subject": "[D-2041] Accord de principe",
+      "text": "Bonjour, accord de principe pour 850 000 MAD sur 25 ans à 4,6 %.",
+      "headers": {
+        "Message-ID": "<POSTMAN-{{live_run_id}}-LIVE@demo.test>"
+      },
+      "attachments": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      (() => {
+      pm.test("HTTP 201", () => { pm.response.to.have.status(201); });
+      const data = pm.response.json();
+      const m=data.message;
+      pm.test("Live analysis completed", () => { pm.expect(m.analysis.status,m.analysis.error || "Live analysis did not complete").to.eql("completed"); });
+      if(m.analysis.status!=="completed"){pm.execution.setNextRequest(null);}else{
+      pm.test("Amount, duration, rate and reply extracted", () => { pm.expect(m.analysis.result.entities.montant).to.eql(850000);pm.expect(m.analysis.result.entities.duree_ans).to.eql(25);pm.expect(m.analysis.result.entities.taux).to.eql(4.6);pm.expect(m.analysis.result.reply_draft).to.be.a("string").and.not.empty; });
+      const p=m.proposals.find(p=>p.action.type==="set_status" && p.action.value==="accord_principe");
+      pm.test("Agreement needs human approval", () => { pm.expect(p).to.be.an("object");pm.expect(p.status).to.eql("pending");pm.expect(p.action.risk).to.eql("medium"); });
+      if(p){pm.collectionVariables.set("live_proposal_id",p.id);pm.collectionVariables.set("live_message_id",m.id);pm.collectionVariables.set("live_analysis",JSON.stringify(m.analysis));}else{pm.execution.setNextRequest(null);}
+      }
+      })();
+    language: text/javascript
+order: 2000
